@@ -1,5 +1,12 @@
 # 个性化海报/封面生成
 
+## 环境配置
+```
+#先准备cuda支持的Pytorch环境 (以torch==2.9.1+cu128为例)
+pip3 install --no-cache-dir torch==2.9.1 torchvision==0.24.1 torchaudio==2.9.1 --index-url https://download.pytorch.org/whl/cu128
+#安装其它依赖
+pip3 install -r requirements.txt
+```
 ## 训练数据准备
 
 见 `data_toolkits/`
