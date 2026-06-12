@@ -1,0 +1,69 @@
+---
+job: extension
+config:
+  name: "flex2_poster_lora_bilingual"
+  process:
+    - type: "sd_trainer"
+      training_folder: "../../output/lora"
+      device: cuda:0
+      network:
+        type: "lora"
+        linear: 16
+        linear_alpha: 16
+      save:
+        dtype: float16
+        save_every: 250
+        max_step_saves_to_keep: 4
+        push_to_hub: false
+      datasets:
+        - dataset_path: "/public/home/libadi/projects/ongoing/PosterGen/data/captions_bilingual.json"
+          control_path: "/public/home/libadi/projects/ongoing/PosterGen/data/canny"
+          controls: []
+          caption_dropout_rate: 0.05
+          cache_latents_to_disk: true
+          resolution: [512, 768]
+      train:
+        batch_size: 1
+        bypass_guidance_embedding: true
+        short_and_long_captions: true
+        steps: 3000
+        gradient_accumulation: 1
+        train_unet: true
+        train_text_encoder: false
+        gradient_checkpointing: true
+        noise_scheduler: "flowmatch"
+        timestep_type: "shift"
+        optimizer: "adamw8bit"
+        lr: 1e-4
+        optimizer_params:
+          weight_decay: 1e-5
+        dtype: bf16
+      model:
+        name_or_path: "ostris/Flex.2-preview"
+        arch: "flex2"
+        quantize: true
+        quantize_te: true
+        model_kwargs:
+          control_dropout: 0.1
+          inpaint_dropout: 1.0
+          do_random_inpainting: false
+          inpaint_random_chance: 0.0
+          invert_inpaint_mask_chance: 0.0
+          random_blur_mask: false
+          random_dialate_mask: false
+      sample:
+        sampler: "flowmatch"
+        sample_every: 250
+        width: 768
+        height: 768
+        prompts:
+          - "minimalist book sale poster with bold typography --ctrl_idx 1 --ctrl_img /public/home/libadi/projects/ongoing/PosterGen/data/canny/007135d76c4ba8f26cbb3f70686b63e501020f67c932823d8e4cd08f8e85ac9c.jpg"
+          - "极简风格书籍促销海报，橙色竖条背景，白色粗体字 --ctrl_idx 1 --ctrl_img /public/home/libadi/projects/ongoing/PosterGen/data/canny/007135d76c4ba8f26cbb3f70686b63e501020f67c932823d8e4cd08f8e85ac9c.jpg"
+        neg: ""
+        seed: 42
+        walk_seed: true
+        guidance_scale: 4
+        sample_steps: 25
+meta:
+  name: "[name]"
+  version: "1.0"
