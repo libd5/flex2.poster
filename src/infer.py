@@ -25,7 +25,7 @@ from toolkit.util.get_model import get_model_class
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_LORA_FILE = "lora_model.safetensors"
-DEFAULT_HF_LORA = os.environ.get("POSTERGEN_LORA_REPO", "libadi/flex2.poster/lora_model.safetensors")
+DEFAULT_HF_LORA = "libadi/flex2.poster/lora_model.safetensors"
 LOCAL_LORA_CANDIDATES = (
     REPO_ROOT / "ckpts" / DEFAULT_LORA_FILE,
     REPO_ROOT / "ckpts" / "flex2_poster_lora_bilingual.safetensors",

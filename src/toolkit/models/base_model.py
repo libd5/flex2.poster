@@ -392,7 +392,8 @@ class BaseModel:
             # the network to drastically speed up inference
             unique_network_weights = set(
                 [x.network_multiplier for x in image_configs])
-            if len(unique_network_weights) == 1 and network.can_merge_in:
+            # Quantized weights cannot be merged in-place; runtime LoRA forward handles them.
+            if len(unique_network_weights) == 1 and network.can_merge_in and not self.model_config.quantize:
                 can_merge_in = True
                 merge_multiplier = unique_network_weights.pop()
                 network.merge_in(merge_weight=merge_multiplier)
