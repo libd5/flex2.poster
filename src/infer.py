@@ -5,6 +5,7 @@ import argparse
 import gc
 import os
 import sys
+import time
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -137,6 +138,63 @@ def load_model():
     return sd
 
 
+def build_prompt(prompt: str, canny_path: Path | None = None) -> str:
+    prompt = (prompt or "").strip()
+    if canny_path is None:
+        return prompt
+    return f"{prompt} --ctrl_idx 1 --ctrl_img {canny_path.resolve()}".strip()
+
+
+def generate_poster(
+    sd,
+    prompt: str,
+    canny_path: Path | None,
+    output_path: Path,
+    width: int = 768,
+    height: int = 768,
+    seed: int = 42,
+    guidance_scale: float = 4.0,
+    num_inference_steps: int = 25,
+    network_multiplier: float = 1.0,
+):
+    if canny_path:
+        canny_path = Path(canny_path).expanduser()
+        if not canny_path.is_file():
+            raise FileNotFoundError(f"Canny image not found: {canny_path}")
+    else:
+        canny_path = None
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    config_kwargs = {}
+    if canny_path is not None:
+        config_kwargs["ctrl_idx"] = 1
+
+    with torch.no_grad():
+        sd.generate_images([
+            GenerateImageConfig(
+                prompt=build_prompt(prompt, canny_path),
+                width=width,
+                height=height,
+                negative_prompt="",
+                seed=seed,
+                guidance_scale=guidance_scale,
+                num_inference_steps=num_inference_steps,
+                network_multiplier=network_multiplier,
+                output_path=str(output_path),
+                output_ext="png",
+                **config_kwargs,
+            )
+        ], sampler="flowmatch")
+
+    return output_path
+
+
+def default_output_path(output_dir: Path, tag: str, seed: int) -> Path:
+    return output_dir / f"{tag}_{seed}_{int(time.time())}.png"
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate a poster with Flex.2 + Canny control.")
     parser.add_argument("--prompt", help="Text prompt")
@@ -152,6 +210,9 @@ def main():
     parser.add_argument('--height', type=int, default=768)
     parser.add_argument('--width', type=int, default=768)
     parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--guidance', type=float, default=4.0)
+    parser.add_argument('--steps', type=int, default=25)
+    parser.add_argument('--lora_scale', type=float, default=1.0)
     args = parser.parse_args()
 
     canny_path = args.canny.expanduser()
@@ -161,8 +222,7 @@ def main():
     lora_path = resolve_lora_path(args.lora)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     tag = "lora" if lora_path else "base"
-    output_path = args.output_dir / f"{tag}_{args.seed}.png"
-    prompt = f"{args.prompt} --ctrl_idx 1 --ctrl_img {canny_path.resolve()}"
+    output_path = default_output_path(args.output_dir, tag, args.seed)
 
     print("Loading Flex.2...")
     sd = load_model()
@@ -170,22 +230,18 @@ def main():
         print(f"Loading LoRA: {lora_path}")
         attach_lora(sd, lora_path)
 
-    with torch.no_grad():
-        sd.generate_images([
-            GenerateImageConfig(
-                prompt=prompt,
-                width=args.width,
-                height=args.height,
-                negative_prompt="",
-                seed=args.seed,
-                guidance_scale=4.0,
-                num_inference_steps=25,
-                network_multiplier=1.0,
-                output_path=str(output_path),
-                output_ext="png",
-                ctrl_idx=1,
-            )
-        ], sampler="flowmatch")
+    generate_poster(
+        sd=sd,
+        prompt=args.prompt,
+        canny_path=canny_path,
+        output_path=output_path,
+        width=args.width,
+        height=args.height,
+        seed=args.seed,
+        guidance_scale=args.guidance,
+        num_inference_steps=args.steps,
+        network_multiplier=args.lora_scale,
+    )
 
     print(f"Saved {output_path}")
     del sd
